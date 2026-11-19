@@ -1,0 +1,46 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import { site, links } from '../data/site';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const works = (await getCollection('works', ({ data }) => !data.draft))
+  .filter((w) => w.data.featured)
+  .sort((a, b) => a.data.order - b.data.order);
+---
+
+<Base>
+  <h1>{site.name}</h1>
+  <p class="muted">{site.tagline}</p>
+
+  <h2>Works</h2>
+  {
+    works.length === 0 ? (
+      <p class="muted">TODO: 注目の作成サイト(回答待ち)</p>
+    ) : (
+      <ul>
+        {works.map((w) => (
+          <li>
+            <a href={`${base}/works/${w.id}/`}>{w.data.title}</a>
+            <span class="muted"> - {w.data.summary}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <h2>Links</h2>
+  {
+    links.length === 0 ? (
+      <p class="muted">TODO: 関連URL(回答待ち)</p>
+    ) : (
+      <ul>
+        {links.map((l) => (
+          <li>
+            <a href={l.url} rel="noopener noreferrer">{l.label}</a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</Base>

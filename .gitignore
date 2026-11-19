@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.astro/
+.env
+.env.*
+# 機密パターンの拒否リスト(ローカル用。リポジトリに入れない)
+scan-denylist.txt
+*.log
