@@ -1,0 +1,26 @@
+---
+import Base from '../layouts/Base.astro';
+import { tools, ui, type Lang } from '../data/site';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = ui[lang];
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<Base lang={lang} page="tools" title={t.tools}>
+  <section class="reveal">
+    <h1>{t.tools}</h1>
+  </section>
+  {
+    tools.map((tool) => (
+      <section class="reveal">
+        <h2>{tool.title[lang]}</h2>
+        <p>{tool.description[lang]}</p>
+        <p><a href={`${base}${tool.href}`}>{t.openTool} →</a></p>
+      </section>
+    ))
+  }
+</Base>

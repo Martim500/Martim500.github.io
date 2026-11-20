@@ -5,7 +5,7 @@ interface Props {
   title?: string;
   lang?: Lang;
   // 切り替え先(もう一方の言語)のページ種別。省略時は切り替えリンクを出さない
-  page?: '' | 'about' | 'works';
+  page?: '' | 'about' | 'works' | 'tools';
 }
 const { title, lang = 'ja', page } = Astro.props;
 const t = ui[lang];
@@ -33,6 +33,7 @@ const pageTitle = title ? `${title} | ${site.title}` : site.title;
       <nav>
         <a href={`${base}${path(lang, 'about')}`}>{t.about}</a>
         <a href={`${base}${path(lang, 'works')}`}>{t.works}</a>
+        <a href={`${base}${path(lang, 'tools')}`}>{t.tools}</a>
         {
           page !== undefined && (
             <a class="lang" href={`${base}${path(other, page)}`} lang={other}>
