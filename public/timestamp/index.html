@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>配信タイムスタンプ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout idea: broadcast timecode console. Big timecode on top, one huge record-style button, log underneath. */
+  --bg:#10131a;
+  --surface:#181d28;
+  --surface-2:#212839;
+  --line:#2d3446;
+  --text:#e9ecf3;
+  --muted:#9aa2b6;
+  --accent:#ff6a57;
+  --accent-ink:#2a0c07;
+  --info:#6cc6f0;
+  --info-ink:#06202d;
+  --good:#52d394;
+  --warn:#f2b84b;
+  --warn-ink:#2b1d00;
+  --font-body:"IBM Plex Sans JP","Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:16px;line-height:1.55;-webkit-text-size-adjust:100%}
+h1,h2{margin:0;text-wrap:balance}
+h1{font-size:18px;font-weight:600;letter-spacing:.02em}
+h2{font-size:15px;font-weight:600;display:flex;align-items:baseline;gap:8px}
+p{margin:0}
+.app{
+  max-width:520px;margin:0 auto;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  display:flex;flex-direction:column;gap:16px;
+}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.pill.good::before{background:var(--good)}
+.pill.warn{color:var(--warn);border-color:var(--warn)}
+.pill.warn::before{background:var(--warn)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+details.card{gap:0}
+details.card[open]{gap:12px}
+summary{cursor:pointer;font-weight:600;font-size:15px;min-height:28px;display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--font-mono);color:var(--muted);font-size:18px}
+details[open]>summary::after{content:"-"}
+.lab{font-size:13px;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted)}
+.err{font-size:13px;color:var(--warn)}
+.err:empty{display:none}
+.field{width:100%;min-height:44px;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font:inherit}
+.field::placeholder{color:var(--muted);opacity:.8}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.btn{min-height:44px;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:10px 14px;font:inherit;font-weight:500;cursor:pointer;touch-action:manipulation}
+.btn.primary{background:var(--info);color:var(--info-ink);border-color:transparent;font-weight:600}
+.btn.armed{background:var(--warn);color:var(--warn-ink);border-color:transparent;font-weight:600}
+.btn.small{min-height:36px;padding:6px 12px;font-size:14px}
+.btn.block{width:100%}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.row>.field{flex:1 1 150px;width:auto}
+.row>.btn{flex:0 0 auto}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--info);outline-offset:2px}
+
+.clockwrap{display:flex;flex-direction:column;gap:6px}
+.clock{font-family:var(--font-mono);font-weight:600;font-size:clamp(44px,15vw,68px);line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums;color:var(--muted)}
+.clock.running{color:var(--text)}
+.clocklab{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:1px 8px;color:var(--muted)}
+.tag.running{color:var(--accent);border-color:var(--accent)}
+.tag.running::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);animation:blink 1.2s steps(2,start) infinite}
+@keyframes blink{50%{opacity:.2}}
+
+.mark{
+  width:100%;min-height:clamp(180px,34vh,300px);border:0;border-radius:20px;background:var(--accent);color:var(--accent-ink);
+  font:inherit;font-size:30px;font-weight:600;letter-spacing:.04em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+}
+.mark small{font-size:14px;font-weight:500;letter-spacing:0;opacity:.85}
+.mark:active{transform:scale(.985)}
+.mark.flash{animation:flash .35s ease-out}
+@keyframes flash{0%{filter:brightness(1.4);box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 35%,transparent)}100%{filter:none;box-shadow:0 0 0 0 transparent}}
+.toast{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border-radius:12px;padding:6px 12px;font-size:14px}
+.toast:empty{visibility:hidden}
+
+.marks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.mk{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
+.mk:first-child{border-top:0;padding-top:0}
+.mk-top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.no{color:var(--muted);font-family:var(--font-mono);font-size:13px;min-width:2.6em}
+.tm{font-size:22px;font-weight:600}
+.jp{font-size:13px;color:var(--muted)}
+.jp b{color:var(--info);font-weight:600;font-size:15px}
+.mk-top .btn{margin-left:auto;align-self:center}
+.empty{font-size:14px;color:var(--muted)}
+.count{font-size:13px;color:var(--muted);font-weight:500}
+
+textarea.field{white-space:pre;overflow:auto;resize:vertical;font-size:13px;line-height:1.5}
+.sess{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.sess li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
+.sess li:first-child{border-top:0;padding-top:0}
+.sess .nm{flex:1 1 140px;min-width:0;overflow-wrap:anywhere}
+.sess .nm b{display:block;font-weight:600}
+.sess .nm span{font-size:12px;color:var(--muted)}
+.chk{display:flex;align-items:center;gap:10px;min-height:44px;font-size:15px}
+.chk input{width:22px;height:22px;accent-color:var(--info)}
+.setrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.setrow .field{width:110px}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<main class="app" id="app"></main>
+<script>
+(function(){
+'use strict';
+
+var KEY = 'streamTimestamp.v1';
+var store = { ok: true };
+var ui = { toast: null, toastTimer: null, armed: null, armedTimer: null, copyMsg: '', wake: null, open: {}, lastMark: 0 };
+var app = document.getElementById('app');
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function pad(n){ return n < 10 ? '0' + n : '' + n; }
+function fmt(sec){
+  sec = Math.max(0, Math.floor(sec));
+  var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  return pad(h) + ':' + pad(m) + ':' + pad(s);
+}
+function esc(v){
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+/* "1:23:45", "83:45" and "12345" (= 1:23:45) are all accepted. Returns seconds or null. */
+function parseTime(str){
+  var t = String(str == null ? '' : str).normalize('NFKC').trim();
+  if (!t) return null;
+  if (/^\d+$/.test(t)) {
+    var sec = parseInt(t.slice(-2), 10);
+    var min = t.length > 2 ? parseInt(t.slice(-4, -2), 10) : 0;
+    var hr = t.length > 4 ? parseInt(t.slice(0, -4), 10) : 0;
+    if (sec > 59 || min > 59) return null;
+    return hr * 3600 + min * 60 + sec;
+  }
+  var p = t.split(':');
+  if (p.length < 2 || p.length > 3) return null;
+  for (var i = 0; i < p.length; i++) { if (!/^\d+$/.test(p[i])) return null; }
+  var n = p.map(function(x){ return parseInt(x, 10); });
+  if (n.length === 2) { if (n[1] > 59) return null; return n[0] * 60 + n[1]; }
+  if (n[1] > 59 || n[2] > 59) return null;
+  return n[0] * 3600 + n[1] * 60 + n[2];
+}
+
+function nameFor(existing){
+  var d = new Date();
+  var base = (d.getMonth() + 1) + '/' + d.getDate() + ' 配信';
+  var n = existing.filter(function(s){ return s.name.indexOf(base) === 0; }).length;
+  return n ? base + (n + 1) : base;
+}
+function makeSession(existing){
+  return { id: uid(), name: nameFor(existing), startEpoch: null, endElapsed: null, marks: [] };
+}
+function load(){
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) {
+      var s = JSON.parse(raw);
+      if (s && Array.isArray(s.sessions) && s.sessions.length) {
+        s.settings = Object.assign({ back: 15, header: true, awake: true }, s.settings || {});
+        if (!s.sessions.some(function(x){ return x.id === s.currentId; })) s.currentId = s.sessions[0].id;
+        return s;
+      }
+    }
+  } catch (e) { store.ok = false; }
+  var first = makeSession([]);
+  return { sessions: [first], currentId: first.id, settings: { back: 15, header: true, awake: true } };
+}
+var state = load();
+
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(state)); store.ok = true; }
+  catch (e) { store.ok = false; }
+  renderStatus();
+}
+function cur(){
+  for (var i = 0; i < state.sessions.length; i++) if (state.sessions[i].id === state.currentId) return state.sessions[i];
+  return state.sessions[0];
+}
+function status(s){
+  if (s.startEpoch == null) return 'idle';
+  if (s.endElapsed != null) return 'ended';
+  return 'running';
+}
+function elapsedNow(s){
+  if (s.startEpoch == null) return 0;
+  if (s.endElapsed != null) return s.endElapsed;
+  return Math.max(0, Math.floor((Date.now() - s.startEpoch) / 1000));
+}
+function clockOf(ms){ var d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
+
+/* ---------- screen wake lock ---------- */
+function acquireWake(){
+  if (!state.settings.awake) return;
+  try {
+    if ('wakeLock' in navigator && !ui.wake) {
+      navigator.wakeLock.request('screen').then(function(l){
+        ui.wake = l;
+        l.addEventListener('release', function(){ ui.wake = null; renderStatus(); });
+        renderStatus();
+      }).catch(function(){ ui.wake = null; });
+    }
+  } catch (e) { ui.wake = null; }
+}
+function releaseWake(){
+  try { if (ui.wake) ui.wake.release(); } catch (e) {}
+  ui.wake = null;
+  renderStatus();
+}
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible' && status(cur()) === 'running') acquireWake();
+});
+
+/* ---------- output ---------- */
+function clean(v){ return String(v).replace(/[\t\r\n]+/g, ' '); }
+function sortedMarks(s){ return s.marks.slice().sort(function(a, b){ return a.sec - b.sec; }); }
+function toTSV(sessions){
+  var back = state.settings.back;
+  var lines = [];
+  if (state.settings.header) lines.push(['配信', '番号', '押した時間', '切り出し開始', 'メモ'].join('\t'));
+  sessions.forEach(function(s){
+    sortedMarks(s).forEach(function(m, i){
+      lines.push([s.name, i + 1, fmt(m.sec), fmt(Math.max(0, m.sec - back)), m.note || ''].map(clean).join('\t'));
+    });
+  });
+  return lines.join('\n');
+}
+function setCopyMsg(msg){
+  ui.copyMsg = msg;
+  var el = document.getElementById('copyMsg');
+  if (el) el.textContent = msg;
+}
+function fallbackCopy(text){
+  var ta = document.getElementById('preview');
+  if (ta) {
+    ta.value = text;
+    var d = ta.closest('details');
+    if (d) { d.open = true; ui.open.preview = true; }
+    ta.focus();
+    ta.select();
+    try { if (document.execCommand('copy')) { setCopyMsg('コピーしました。Excelに貼り付けてください。'); return; } } catch (e) {}
+  }
+  setCopyMsg('自動コピーできませんでした。下の欄を全選択してコピーしてください。');
+}
+function copyText(text, hasMarks){
+  if (!hasMarks) { setCopyMsg('記録がありません。'); return; }
+  var p;
+  try { p = navigator.clipboard.writeText(text); } catch (e) { p = Promise.reject(e); }
+  p.then(function(){ setCopyMsg('コピーしました。Excelに貼り付けてください。'); })
+   .catch(function(){ fallbackCopy(text); });
+}
+
+/* ---------- rendering ---------- */
+function armedLabel(key, label){ return ui.armed === key ? 'もう一度押して' + label : label; }
+function armedClass(key){ return ui.armed === key ? ' armed' : ''; }
+function openAttr(k){ return ui.open[k] ? ' open' : ''; }
+function statusTag(st){
+  var label = st === 'running' ? '記録中' : st === 'ended' ? '終了' : '未スタート';
+  return '<span class="tag ' + st + '">' + label + '</span>';
+}
+
+function clockCard(s, st){
+  var start = s.startEpoch != null ? 'スタート ' + clockOf(s.startEpoch) + '(この端末の時刻)' : '';
+  return '<section class="card">' +
+    '<label class="lab" for="sname">配信名</label>' +
+    '<input id="sname" class="field" value="' + esc(s.name) + '" maxlength="40" autocomplete="off">' +
+    '<div class="clockwrap"><div class="clock ' + st + '" id="clock">' + fmt(elapsedNow(s)) + '</div>' +
+    '<div class="clocklab"><span>配信経過時間</span>' + statusTag(st) + '</div></div>' +
+    (start ? '<p class="hint">' + start + '</p>' : '') +
+    '</section>';
+}
+function startCard(){
+  return '<section class="card">' +
+    '<button class="btn primary block" data-a="start-now">配信開始に合わせてスタート</button>' +
+    '<p class="hint">配信が始まる瞬間に押します。アーカイブの0:00と同じ時間で刻まれます。</p>' +
+    '<label class="lab" for="startAt">途中から使う場合は、いま配信で進んでいる時間</label>' +
+    '<div class="row"><input id="startAt" class="field mono" inputmode="numeric" autocomplete="off" placeholder="1:23:45 または 12345">' +
+    '<button class="btn" data-a="start-at">この時間でスタート</button></div>' +
+    '<div class="err" id="startErr" role="alert"></div>' +
+    '</section>';
+}
+function runCard(s){
+  var n = s.marks.length;
+  return '<button class="mark" id="markBtn" data-a="mark"><span>見どころ</span><small>タップで記録(' + n + '件)</small></button>' +
+    '<div class="toast" id="toast" aria-live="polite"></div>' +
+    '<details class="card" data-k="tools"' + openAttr('tools') + '><summary>時間のずれを直す・配信を終える</summary>' +
+    '<label class="lab" for="resyncAt">いま配信で進んでいる時間に合わせる</label>' +
+    '<div class="row"><input id="resyncAt" class="field mono" inputmode="numeric" autocomplete="off" placeholder="1:23:45 または 12345">' +
+    '<button class="btn" data-a="resync">合わせる</button></div>' +
+    '<div class="err" id="resyncErr" role="alert"></div>' +
+    '<div class="row"><button class="btn small" data-a="nudge" data-d="-5">-5秒</button><button class="btn small" data-a="nudge" data-d="-1">-1秒</button>' +
+    '<button class="btn small" data-a="nudge" data-d="1">+1秒</button><button class="btn small" data-a="nudge" data-d="5">+5秒</button></div>' +
+    '<p class="hint">合わせ直しは、これ以降の記録から反映されます。</p>' +
+    '<button class="btn block' + armedClass('end') + '" data-a="end">' + armedLabel('end', '配信を終了する') + '</button>' +
+    '</details>';
+}
+function endedCard(s){
+  return '<section class="card"><p>この配信は終了しています(経過 <span class="mono">' + fmt(s.endElapsed) + '</span>)。</p>' +
+    '<button class="btn primary block" data-a="new-session">新しい配信を始める</button></section>';
+}
+function marksCard(s){
+  var back = state.settings.back;
+  var list = sortedMarks(s);
+  var body;
+  if (!list.length) {
+    body = '<p class="empty">まだ記録はありません。見どころでボタンを押すと、ここに並びます。</p>';
+  } else {
+    body = '<p class="hint">切り出し開始は、押した時間の' + back + '秒前です(設定で変更できます)。</p><ol class="marks">';
+    for (var i = list.length - 1; i >= 0; i--) {
+      var m = list[i];
+      body += '<li class="mk"><div class="mk-top"><span class="no">#' + (i + 1) + '</span>' +
+        '<span class="tm mono">' + fmt(m.sec) + '</span>' +
+        '<span class="jp">切り出し <b class="mono">' + fmt(Math.max(0, m.sec - back)) + '</b></span>' +
+        '<button class="btn small' + armedClass('dm:' + m.id) + '" data-a="del-mark" data-id="' + esc(m.id) + '">' + armedLabel('dm:' + m.id, '削除') + '</button></div>' +
+        '<input class="field note" data-id="' + esc(m.id) + '" value="' + esc(m.note || '') + '" placeholder="メモ(任意)" maxlength="60" autocomplete="off"></li>';
+    }
+    body += '</ol>';
+  }
+  return '<section class="card"><h2>記録<span class="count">' + list.length + '件</span></h2>' + body + '</section>';
+}
+function outputCard(s){
+  var text = toTSV([s]);
+  return '<section class="card"><h2>Excelに貼る</h2>' +
+    '<div class="row"><button class="btn primary" data-a="copy-cur">この配信をコピー</button><button class="btn" data-a="copy-all">全配信をコピー</button></div>' +
+    '<div class="hint" id="copyMsg" role="status">' + esc(ui.copyMsg) + '</div>' +
+    '<details data-k="preview"' + openAttr('preview') + '><summary>コピーする内容を確認</summary><textarea id="preview" class="field mono" readonly rows="6">' + esc(text) + '</textarea></details>' +
+    '</section>';
+}
+function sessionsCard(){
+  var items = state.sessions.map(function(x){
+    var st = status(x);
+    var label = (st === 'running' ? '記録中' : st === 'ended' ? '終了' : '未スタート') + ' / ' + x.marks.length + '件';
+    var isCur = x.id === state.currentId;
+    return '<li><div class="nm"><b>' + esc(x.name) + '</b><span>' + label + (isCur ? ' / 表示中' : '') + '</span></div>' +
+      (isCur ? '' : '<button class="btn small" data-a="open-session" data-id="' + esc(x.id) + '">開く</button>') +
+      '<button class="btn small' + armedClass('ds:' + x.id) + '" data-a="del-session" data-id="' + esc(x.id) + '">' + armedLabel('ds:' + x.id, '削除') + '</button></li>';
+  }).join('');
+  return '<details class="card" data-k="sessions"' + openAttr('sessions') + '><summary>配信一覧(' + state.sessions.length + ')</summary>' +
+    '<ul class="sess">' + items + '</ul>' +
+    '<button class="btn block" data-a="new-session">新しい配信を追加</button></details>';
+}
+function settingsCard(){
+  var st = state.settings;
+  return '<details class="card" data-k="settings"' + openAttr('settings') + '><summary>設定</summary>' +
+    '<div class="setrow"><label class="lab" for="back">押した時間から戻る秒数</label><input id="back" class="field mono" type="number" inputmode="numeric" min="0" max="300" value="' + st.back + '"></div>' +
+    '<p class="hint">見どころを認識してからボタンを押すまでの遅れ分を引いた時間が、切り出し開始になります。</p>' +
+    '<label class="chk"><input type="checkbox" id="hdr"' + (st.header ? ' checked' : '') + '>コピーに見出し行を入れる</label>' +
+    '<label class="chk"><input type="checkbox" id="awake"' + (st.awake ? ' checked' : '') + '>記録中は画面を消さない</label>' +
+    '</details>';
+}
+function header(){
+  return '<header class="top"><h1>配信タイムスタンプ</h1><div class="pills"><span class="pill" id="pillSave"></span><span class="pill" id="pillWake"></span></div></header>';
+}
+
+function render(){
+  var s = cur(), st = status(s);
+  var h = header() + clockCard(s, st);
+  if (st === 'idle') h += startCard();
+  else if (st === 'running') h += runCard(s);
+  else h += endedCard(s);
+  h += marksCard(s) + outputCard(s) + sessionsCard() + settingsCard();
+  app.innerHTML = h;
+  renderStatus();
+  renderToast();
+}
+function renderStatus(){
+  var a = document.getElementById('pillSave'), b = document.getElementById('pillWake');
+  if (a) {
+    a.className = 'pill ' + (store.ok ? 'good' : 'warn');
+    a.textContent = store.ok ? 'この端末に自動保存' : '保存できません。終了時に必ずコピー';
+  }
+  if (b) {
+    b.style.display = ui.wake ? '' : 'none';
+    b.className = 'pill good';
+    b.textContent = '画面点灯中';
+  }
+}
+function renderToast(){
+  var el = document.getElementById('toast');
+  if (!el) return;
+  if (!ui.toast) { el.innerHTML = ''; return; }
+  var back = state.settings.back;
+  el.innerHTML = '<span>記録 <b class="mono">' + fmt(ui.toast.sec) + '</b>(切り出し <span class="mono">' + fmt(Math.max(0, ui.toast.sec - back)) + '</span>)</span>' +
+    '<button class="btn small" data-a="undo">取り消す</button>';
+}
+function tickNow(){
+  var el = document.getElementById('clock');
+  if (el) el.textContent = fmt(elapsedNow(cur()));
+}
+function setErr(id, msg){ var el = document.getElementById(id); if (el) el.textContent = msg; }
+function val(id){ var el = document.getElementById(id); return el ? el.value : ''; }
+
+/* ---------- actions ---------- */
+function arm(key){
+  if (ui.armed === key) { ui.armed = null; clearTimeout(ui.armedTimer); return true; }
+  ui.armed = key;
+  clearTimeout(ui.armedTimer);
+  ui.armedTimer = setTimeout(function(){ ui.armed = null; render(); }, 3500);
+  render();
+  return false;
+}
+function flash(){
+  var b = document.getElementById('markBtn');
+  if (!b) return;
+  b.classList.remove('flash');
+  void b.offsetWidth;
+  b.classList.add('flash');
+}
+function doMark(){
+  var s = cur();
+  if (status(s) !== 'running') return;
+  var now = Date.now();
+  if (now - ui.lastMark < 350) return;
+  ui.lastMark = now;
+  var sec = elapsedNow(s);
+  var m = { id: uid(), sec: sec, note: '' };
+  s.marks.push(m);
+  save();
+  ui.toast = { id: m.id, sec: sec };
+  render();
+  flash();
+  try { if (navigator.vibrate) navigator.vibrate(25); } catch (e) {}
+  clearTimeout(ui.toastTimer);
+  ui.toastTimer = setTimeout(function(){ ui.toast = null; renderToast(); }, 8000);
+}
+function startAt(s, t){
+  s.startEpoch = Date.now() - t * 1000;
+  s.endElapsed = null;
+  save(); render(); acquireWake();
+}
+function act(a, b){
+  var s = cur();
+  switch (a) {
+    case 'start-now':
+      s.startEpoch = Date.now(); s.endElapsed = null;
+      save(); render(); acquireWake();
+      break;
+    case 'start-at': {
+      var t = parseTime(val('startAt'));
+      if (t == null) { setErr('startErr', '時間は 1:23:45 または 12345 の形で入力してください。'); return; }
+      startAt(s, t);
+      break;
+    }
+    case 'resync': {
+      var r = parseTime(val('resyncAt'));
+      if (r == null) { setErr('resyncErr', '時間は 1:23:45 または 12345 の形で入力してください。'); return; }
+      s.startEpoch = Date.now() - r * 1000;
+      save(); render();
+      break;
+    }
+    case 'nudge': {
+      var d = parseInt(b.getAttribute('data-d'), 10);
+      s.startEpoch -= d * 1000;
+      save(); tickNow();
+      break;
+    }
+    case 'mark': doMark(); break;
+    case 'undo':
+      if (ui.toast) {
+        var id = ui.toast.id;
+        s.marks = s.marks.filter(function(m){ return m.id !== id; });
+        ui.toast = null; save(); render();
+      }
+      break;
+    case 'end':
+      if (!arm('end')) return;
+      s.endElapsed = elapsedNow(s);
+      releaseWake(); save(); render();
+      break;
+    case 'new-session': {
+      var ns = makeSession(state.sessions);
+      state.sessions.push(ns); state.currentId = ns.id;
+      ui.toast = null; save(); render();
+      window.scrollTo(0, 0);
+      break;
+    }
+    case 'open-session':
+      state.currentId = b.getAttribute('data-id');
+      ui.toast = null; save(); render(); window.scrollTo(0, 0);
+      break;
+    case 'del-session': {
+      var sid = b.getAttribute('data-id');
+      if (!arm('ds:' + sid)) return;
+      state.sessions = state.sessions.filter(function(x){ return x.id !== sid; });
+      if (!state.sessions.length) state.sessions.push(makeSession([]));
+      if (state.currentId === sid) state.currentId = state.sessions[0].id;
+      save(); render();
+      break;
+    }
+    case 'del-mark': {
+      var mid = b.getAttribute('data-id');
+      if (!arm('dm:' + mid)) return;
+      s.marks = s.marks.filter(function(m){ return m.id !== mid; });
+      save(); render();
+      break;
+    }
+    case 'copy-cur': copyText(toTSV([s]), s.marks.length > 0); break;
+    case 'copy-all': {
+      var any = state.sessions.some(function(x){ return x.marks.length > 0; });
+      copyText(toTSV(state.sessions), any);
+      break;
+    }
+  }
+}
+
+document.addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('[data-a]') : null;
+  if (b) act(b.getAttribute('data-a'), b);
+});
+document.addEventListener('keydown', function(e){
+  if (e.key !== 'Enter') return;
+  if (e.target.id === 'startAt') act('start-at', e.target);
+  else if (e.target.id === 'resyncAt') act('resync', e.target);
+});
+document.addEventListener('input', function(e){
+  var t = e.target, s = cur();
+  if (t.id === 'sname') { s.name = t.value; save(); }
+  else if (t.classList && t.classList.contains('note')) {
+    var id = t.getAttribute('data-id');
+    for (var i = 0; i < s.marks.length; i++) if (s.marks[i].id === id) s.marks[i].note = t.value;
+    save();
+    var ta = document.getElementById('preview');
+    if (ta) ta.value = toTSV([s]);
+  }
+});
+document.addEventListener('change', function(e){
+  var t = e.target;
+  if (t.id === 'sname') { if (!t.value.trim()) cur().name = nameFor(state.sessions); save(); render(); }
+  else if (t.id === 'back') {
+    var v = parseInt(t.value, 10);
+    state.settings.back = isNaN(v) ? 15 : Math.min(300, Math.max(0, v));
+    save(); render();
+  }
+  else if (t.id === 'hdr') { state.settings.header = t.checked; save(); render(); }
+  else if (t.id === 'awake') {
+    state.settings.awake = t.checked; save();
+    if (t.checked && status(cur()) === 'running') acquireWake(); else if (!t.checked) releaseWake();
+  }
+});
+document.addEventListener('toggle', function(e){
+  var k = e.target && e.target.getAttribute ? e.target.getAttribute('data-k') : null;
+  if (k) ui.open[k] = e.target.open;
+}, true);
+
+setInterval(tickNow, 200);
+document.addEventListener('visibilitychange', tickNow);
+
+render();
+if (status(cur()) === 'running') acquireWake();
+save();
+
+/* expose pure helpers for testing */
+window.__stamp = { parseTime: parseTime, fmt: fmt, toTSV: toTSV, getState: function(){ return state; } };
+})();
+</script>
+</body>
+</html>
