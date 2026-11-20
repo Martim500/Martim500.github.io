@@ -1,0 +1,77 @@
+---
+import Base from '../layouts/Base.astro';
+import { ui, type Lang } from '../data/site';
+import { talks, events, roleLabel } from '../data/talks';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = ui[lang];
+
+const byDateDesc = <T extends { date: string }>(a: T, b: T) => b.date.localeCompare(a.date);
+const sortedTalks = [...talks].sort(byDateDesc);
+const sortedEvents = [...events].sort(byDateDesc);
+---
+
+<Base lang={lang} page="talks" title={t.talks}>
+  <section class="reveal">
+    <h1>{t.talks}</h1>
+
+    <h2>{t.talksHeading}</h2>
+    {
+      sortedTalks.length === 0 ? (
+        <p class="muted">{t.preparing}</p>
+      ) : (
+        <>
+          <p>
+            {t.talkCount}: {sortedTalks.length}
+            {t.timesSuffix}
+          </p>
+          <ul class="entries">
+            {sortedTalks.map((x) => (
+              <li>
+                <span class="date">{x.date}</span>
+                <strong>{x.title}</strong>
+                <div class="meta">
+                  {x.url ? (
+                    <a href={x.url} rel="noopener noreferrer">{x.event}</a>
+                  ) : (
+                    x.event
+                  )}
+                  {x.slides && (
+                    <>
+                      {' / '}
+                      <a href={x.slides} rel="noopener noreferrer">{t.slides}</a>
+                    </>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )
+    }
+
+    <h2 style="margin-top: 4rem">{t.eventsHeading}</h2>
+    {
+      sortedEvents.length === 0 ? (
+        <p class="muted">{t.preparing}</p>
+      ) : (
+        <ul class="entries">
+          {sortedEvents.map((e) => (
+            <li>
+              <span class="date">{e.date}</span>
+              {e.url ? (
+                <a href={e.url} rel="noopener noreferrer">{e.name}</a>
+              ) : (
+                e.name
+              )}
+              <span class="meta"> ({roleLabel[e.role][lang]})</span>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+</Base>
