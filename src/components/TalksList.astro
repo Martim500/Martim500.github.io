@@ -1,0 +1,42 @@
+---
+import Base from '../layouts/Base.astro';
+import { talks, ui, type Lang } from '../data/site';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = ui[lang];
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<Base lang={lang} page="talks" title={t.talks}>
+  <section class="reveal">
+    <h1>{t.talks}</h1>
+    {lang === 'en' && <p class="muted">{t.slidesNote}</p>}
+  </section>
+  {
+    talks.map((talk) => (
+      <section class="reveal talk">
+        <p class="muted date">{talk.date.replace('-', '.')}</p>
+        <h2>{talk.title}</h2>
+        <p>{talk.summary[lang]}</p>
+        <p>
+          <a href={`${base}/talks/${talk.pdf}`} target="_blank" rel="noopener">
+            {t.slides} →
+          </a>
+        </p>
+      </section>
+    ))
+  }
+</Base>
+
+<style>
+  .talk {
+    margin-bottom: 4rem;
+  }
+  .date {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
