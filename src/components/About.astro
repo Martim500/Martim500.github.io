@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { ui, type Lang } from '../data/site';
-import { intro, credentials } from '../data/career';
+import { intro, credentials, activities } from '../data/career';
 import { talks } from '../data/talks';
 
 interface Props {
@@ -31,15 +31,18 @@ const t = ui[lang];
     </ul>
   </section>
 
-  {
-    talks.length > 0 && (
-      <section class="reveal">
-        <h2>{t.activity}</h2>
-        <p>
-          {t.talkCount}: {talks.length}
-          {t.timesSuffix}
-        </p>
-      </section>
-    )
-  }
+  <section class="reveal">
+    <h2>{t.activity}</h2>
+    <ul class="entries">
+      {activities.map((a) => <li>{a[lang]}</li>)}
+      {
+        talks.length > 0 && (
+          <li>
+            {t.talkCount}: {talks.length}
+            {t.timesSuffix}
+          </li>
+        )
+      }
+    </ul>
+  </section>
 </Base>

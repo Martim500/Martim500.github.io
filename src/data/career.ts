@@ -30,3 +30,19 @@ export const credentials: { title: L; year?: string }[] = [
     },
   },
 ];
+
+// 活動内容。社内外のコミュニティ活動と発信。会社名・グループ名・案件名は書かない。
+export const activities: L[] = [
+  {
+    ja: 'AWS Jr. Champions のネットワークを通じた、会社をまたぐコミュニティづくり',
+    en: 'Building cross-company community through the Japan AWS Jr. Champions network',
+  },
+  {
+    ja: '社内勉強会・研修の企画と実施',
+    en: 'Organizing and running internal study sessions and training',
+  },
+  {
+    ja: 'Qiitaでの技術記事の執筆',
+    en: 'Writing technical articles on Qiita',
+  },
+];
