@@ -1,10 +1,14 @@
 // 自己紹介・AWS経歴。確認済みの事実だけを書く。
-// 所属会社名・案件名・顧客名は載せない(README「公開前のルール」)。
+// 会社名の掲載は本人が可としている。案件名・顧客名は載せない(README「公開前のルール」)。
 import type { Lang } from './site';
 
 type L = Record<Lang, string>;
 
 export const intro: L[] = [
+  {
+    ja: 'Martim(マーティン)です。',
+    en: 'I am Martim (pronounced "Martin").',
+  },
   {
     ja: 'AWSクラウドエンジニアです。AWSの実務経験は3年(2026年時点)。Amazon Bedrock、AWS Lambda、AWS IoT、コスト最適化などを扱っています。',
     en: 'I am an AWS cloud engineer with 3 years of hands-on AWS experience (as of 2026). I work with Amazon Bedrock, AWS Lambda, AWS IoT and cost optimization.',

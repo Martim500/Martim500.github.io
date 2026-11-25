@@ -9,26 +9,34 @@ interface Props {
 const { lang } = Astro.props;
 const t = ui[lang];
 const published = serviceProfiles.filter((s) => s.url);
+const groups = [
+  { key: 'side' as const, label: t.sideWork },
+  { key: 'main' as const, label: t.mainWork },
+]
+  .map((g) => ({ ...g, items: published.filter((s) => s.group === g.key) }))
+  .filter((g) => g.items.length > 0);
 ---
 
 <Base lang={lang} page="services" title={t.services}>
   <section class="reveal">
     <h1>{t.services}</h1>
     {
-      published.length === 0 ? (
+      groups.length === 0 ? (
         <p class="muted">{t.preparing}</p>
       ) : (
-        <>
-          <p class="muted">{t.servicesLead}</p>
-          <ul class="entries">
-            {published.map((s) => (
-              <li>
-                <a href={s.url} rel="noopener noreferrer">{s.name}</a>
-                {s.summary && <div class="meta">{s.summary[lang]}</div>}
-              </li>
-            ))}
-          </ul>
-        </>
+        groups.map((g) => (
+          <>
+            <h3>{g.label}</h3>
+            <ul class="entries">
+              {g.items.map((s) => (
+                <li>
+                  <a href={s.url} rel="noopener noreferrer">{s.name}</a>
+                  {s.summary && <div class="meta">{s.summary[lang]}</div>}
+                </li>
+              ))}
+            </ul>
+          </>
+        ))
       )
     }
   </section>
