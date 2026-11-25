@@ -6,10 +6,10 @@ export type Lang = 'ja' | 'en';
 export const site = {
   title: 'Martim site',
   name: 'Martim500',
-  // TODO: 一言紹介(未定)
+  // 確認済みの事実だけで構成した仮の一言。好みの文言に変えてよい。
   tagline: {
-    ja: 'TODO: 一言紹介',
-    en: 'TODO: tagline',
+    ja: 'AWSクラウドエンジニア。AWS認定資格 全冠、Japan AWS Jr. Champions。',
+    en: 'AWS cloud engineer. All AWS Certifications holder and Japan AWS Jr. Champion.',
   } satisfies Record<Lang, string>,
 };
 
@@ -126,7 +126,13 @@ export const ui = {
     slides: '資料(PDF)',
     slidesNote: '資料はすべて日本語です。',
     links: '関連URL',
-    todoAbout: 'TODO: 自己紹介(未定)',
+    services: 'お仕事',
+    career: 'AWS経歴',
+    activity: '発信活動',
+    talkCount: '登壇',
+    timesSuffix: '回',
+    preparing: '準備中',
+    servicesLead: '外部プラットフォームでのプロフィールです。',
     todoWorks: 'TODO: 作成サイト(未定)',
     openTool: '開く',
     switchLabel: 'English',
@@ -140,7 +146,13 @@ export const ui = {
     slides: 'Slides (PDF)',
     slidesNote: 'All slides are in Japanese.',
     links: 'Links',
-    todoAbout: 'TODO: About (to be decided)',
+    services: 'Services',
+    career: 'AWS Career',
+    activity: 'Activities',
+    talkCount: 'Talks',
+    timesSuffix: '',
+    preparing: 'Coming soon',
+    servicesLead: 'My profiles on external platforms.',
     todoWorks: 'TODO: Works (to be decided)',
     openTool: 'Open',
     switchLabel: '日本語',
@@ -149,7 +161,7 @@ export const ui = {
 } satisfies Record<Lang, Record<string, string>>;
 
 // 言語ごとのパス。ja はルート直下、en は /en/ 配下。
-export type Page = '' | 'about' | 'works' | 'tools' | 'talks';
+export type Page = '' | 'about' | 'works' | 'tools' | 'talks' | 'services';
 
 export function path(lang: Lang, page: Page): string {
   const prefix = lang === 'ja' ? '' : 'en/';

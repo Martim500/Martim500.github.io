@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
-import { ui, type Lang } from '../data/site';
+import { ui, talks, type Lang } from '../data/site';
+import { intro, credentials, activities } from '../data/career';
 
 interface Props {
   lang: Lang;
@@ -12,6 +13,35 @@ const t = ui[lang];
 <Base lang={lang} page="about" title={t.about}>
   <section class="reveal">
     <h1>{t.about}</h1>
-    <p class="muted">{t.todoAbout}</p>
+    {intro.map((p) => <p>{p[lang]}</p>)}
+  </section>
+
+  <section class="reveal">
+    <h2>{t.career}</h2>
+    <ul class="entries">
+      {
+        credentials.map((c) => (
+          <li>
+            {c.year && <span class="date">{c.year}</span>}
+            {c.title[lang]}
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section class="reveal">
+    <h2>{t.activity}</h2>
+    <ul class="entries">
+      {activities.map((a) => <li>{a[lang]}</li>)}
+      {
+        talks.length > 0 && (
+          <li>
+            {t.talkCount}: {talks.length}
+            {t.timesSuffix}
+          </li>
+        )
+      }
+    </ul>
   </section>
 </Base>
