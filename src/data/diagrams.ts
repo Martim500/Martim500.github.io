@@ -20,4 +20,17 @@ export interface Diagram {
   date: string; // YYYY-MM
 }
 
-export const diagrams: Diagram[] = [];
+export const diagrams: Diagram[] = [
+  {
+    slug: 'vpc-nfw-waf-alb-ec2',
+    title: {
+      ja: '名前解決からEC2まで: Route 53、NFW、WAF、ALBを通る通信',
+      en: 'From DNS to EC2: traffic through Route 53, Network Firewall, WAF, and ALB',
+    },
+    summary: {
+      ja: 'DNSキャッシュとRoute 53での名前解決から、IGWのエッジルートでNetwork Firewallを経由し、AWS WAF付きのALBを通ってPrivateサブネットのEC2に届くまでの通信を動かして示す図解。',
+      en: 'An animated diagram of a request resolved via DNS cache and Route 53, routed through Network Firewall by IGW ingress routing, then through an ALB with AWS WAF to an EC2 instance in a private subnet.',
+    },
+    date: '2026-11',
+  },
+];

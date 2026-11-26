@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>名前解決からEC2まで: Route 53、NFW、WAF、ALBを通る通信</title>
+<style>
+:root{--bg:#faf9f5;--text:#1f1e1d;--text2:#5f5e5a;--border:rgba(0,0,0,.12);--border-strong:rgba(0,0,0,.25);--border-stronger:rgba(0,0,0,.4);--surface:#ffffff;--neutral:#f1efe8;--accent:#185FA5;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;--radius:8px}
+@media (prefers-color-scheme:dark){:root{--bg:#1f1e1d;--text:#ecebe6;--text2:#b4b2a9;--border:rgba(255,255,255,.12);--border-strong:rgba(255,255,255,.25);--border-stronger:rgba(255,255,255,.45);--surface:#262624;--neutral:#2c2c2a;--accent:#85B7EB}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.7}
+main{max-width:960px;margin:0 auto;padding:16px}
+a{color:var(--accent)}
+h1{font-size:20px;font-weight:500;margin:8px 0 4px}
+.lead{font-size:14px;color:var(--text2);margin:0 0 8px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--text2);margin:0 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+svg{display:block;width:100%;height:auto}
+.t{font-size:14px;fill:var(--text)}.ts{font-size:12px;fill:var(--text2)}.th{font-size:14px;font-weight:500;fill:var(--text)}
+svg text{font-family:var(--sans)}
+.c-blue rect{fill:#E6F1FB;stroke:#185FA5}.c-blue text{fill:#0C447C}
+.c-purple rect{fill:#EEEDFE;stroke:#534AB7}.c-purple text{fill:#3C3489}
+.c-coral rect{fill:#FAECE7;stroke:#993C1D}.c-coral text{fill:#712B13}
+.c-amber rect{fill:#FAEEDA;stroke:#854F0B}.c-amber text{fill:#633806}
+.c-teal rect{fill:#E1F5EE;stroke:#0F6E56}.c-teal text{fill:#085041}
+.c-pink rect{fill:#FBEAF0;stroke:#993556}.c-pink text{fill:#72243E}
+.c-gray rect{fill:#F1EFE8;stroke:#5F5E5A}.c-gray text{fill:#444441}
+@media (prefers-color-scheme:dark){
+.c-blue rect{fill:#0C447C;stroke:#85B7EB}.c-blue text{fill:#B5D4F4}
+.c-purple rect{fill:#3C3489;stroke:#AFA9EC}.c-purple text{fill:#CECBF6}
+.c-coral rect{fill:#712B13;stroke:#F0997B}.c-coral text{fill:#F5C4B3}
+.c-amber rect{fill:#633806;stroke:#EF9F27}.c-amber text{fill:#FAC775}
+.c-teal rect{fill:#085041;stroke:#5DCAA5}.c-teal text{fill:#9FE1CB}
+.c-pink rect{fill:#72243E;stroke:#ED93B1}.c-pink text{fill:#F4C0D1}
+.c-gray rect{fill:#444441;stroke:#B4B2A9}.c-gray text{fill:#D3D1C7}}
+.ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;font-size:13px;color:var(--text2);margin-top:8px}
+.ctrl label{display:flex;align-items:center;gap:6px;cursor:pointer}
+button{font:inherit;font-size:13px;color:var(--text);background:transparent;border:0.5px solid var(--border-strong);border-radius:var(--radius);padding:4px 12px;cursor:pointer;min-height:32px}
+button:hover{background:var(--neutral)}
+#stat{font-size:12px;color:var(--text2);margin:10px 0 4px;font-family:var(--mono);word-break:break-all}
+.cards{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
+.card{display:flex;align-items:center;gap:8px;padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--radius);font-size:13px;cursor:pointer;background:var(--surface);color:var(--text)}
+.card.on{border-color:var(--border-stronger);background:var(--neutral)}
+.mk{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block}
+.cnt{color:var(--text2);min-width:14px;text-align:right}
+.grp{font-size:12px;color:var(--text2);margin-top:4px}
+#det{border:0.5px solid var(--border);border-radius:12px;padding:12px 16px;font-size:14px;background:var(--surface)}
+#det .ip{font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:8px;word-break:break-all}
+.back{font-size:14px;display:inline-block;margin-top:16px}
+</style>
+</head>
+<body>
+<main>
+<a class="back" href="/diagrams/" style="margin-top:0">図解一覧へ</a>
+<h1>名前解決からEC2まで: Route 53、NFW、WAF、ALBを通る通信</h1>
+<p class="lead">全リクエストがDNSキャッシュで名前解決し、IGW、Network Firewall、AWS WAF付きのALBを経てPrivateサブネットのEC2に届くまでを動かして見せる図解です。</p>
+<div class="legend"><span><span class="mk" style="background:var(--text2)"></span>丸 = リクエスト（色 = いまの処理段階）</span><span>段階カードを押すと、その段階を強調して説明を表示</span></div>
+<h2 class="sr">全リクエストがDNSキャッシュで名前解決し、キャッシュミス時だけRoute 53へ問い合わせたあと、IGW、Network Firewall、AWS WAF付きのALBを経てPrivateサブネットのEC2に届くまでを示す動く図解。</h2>
+<svg viewBox="0 0 680 410" role="img">
+<title>名前解決を含むEC2への到達経路</title>
+<desc>リクエストはまずDNSキャッシュを引き、ミスした場合のみRoute 53へ問い合わせる。その後IGW、NFW、WAF、ALBを経てEC2に届く。</desc>
+<rect x="120" y="10" width="552" height="388" rx="10" fill="none" stroke="var(--border-stronger)" stroke-width="0.5" stroke-dasharray="5 4"/>
+<text class="ts" x="134" y="28">AWSクラウド</text>
+<rect x="140" y="98" width="525" height="290" rx="8" fill="none" stroke="var(--border-strong)" stroke-width="0.5" stroke-dasharray="5 4"/>
+<text class="ts" x="152" y="116">リージョン（東京）</text>
+<rect x="205" y="124" width="455" height="254" rx="8" fill="none" stroke="#7F77DD" stroke-width="0.8" stroke-dasharray="5 4"/>
+<text class="ts" x="245" y="140">VPC 10.0.0.0/16</text>
+<rect x="245" y="148" width="407" height="158" rx="8" fill="none" stroke="var(--border-strong)" stroke-width="0.5" stroke-dasharray="3 3"/>
+<text class="ts" x="257" y="163">AZ-a</text>
+<rect x="255" y="172" width="95" height="126" rx="6" fill="none" stroke="#639922" stroke-width="1" stroke-dasharray="5 4"/>
+<text class="ts" x="263" y="188">FWサブネット</text><text class="ts" x="263" y="202">10.0.0.0/28</text>
+<rect x="358" y="172" width="137" height="126" rx="6" fill="none" stroke="#639922" stroke-width="1" stroke-dasharray="5 4"/>
+<text class="ts" x="366" y="188">Publicサブネット</text><text class="ts" x="366" y="202">10.0.1.0/24</text>
+<rect x="505" y="172" width="140" height="126" rx="6" fill="none" stroke="#378ADD" stroke-width="1" stroke-dasharray="5 4"/>
+<text class="ts" x="513" y="188">Privateサブネット</text><text class="ts" x="513" y="202">10.0.11.0/24</text>
+<line x1="60" y1="212" x2="60" y2="176" stroke="var(--border-strong)" stroke-width="0.5"/>
+<path d="M60 128 V51 H140" fill="none" stroke="var(--border-strong)" stroke-width="0.5" stroke-dasharray="4 3"/>
+<line x1="100" y1="231" x2="177" y2="231" stroke="var(--border-strong)" stroke-width="0.5"/>
+<line x1="233" y1="231" x2="266" y2="231" stroke="var(--border-strong)" stroke-width="0.5"/>
+<line x1="340" y1="231" x2="366" y2="231" stroke="var(--border-strong)" stroke-width="0.5"/>
+<line x1="410" y1="231" x2="420" y2="231" stroke="var(--border-strong)" stroke-width="0.5"/>
+<line x1="486" y1="231" x2="530" y2="231" stroke="var(--border-strong)" stroke-width="0.5"/>
+<g class="c-purple"><rect id="n-r53" x="140" y="34" width="120" height="56" rx="6" stroke-width="0.5"/><text class="th" x="200" y="78" text-anchor="middle" dominant-baseline="central">Route 53</text></g>
+<g class="c-purple"><rect id="n-cache" x="10" y="128" width="100" height="48" rx="6" stroke-width="0.5"/><text class="ts" x="60" y="166" text-anchor="middle" dominant-baseline="central">DNSキャッシュ</text></g>
+<g class="c-blue"><rect id="n-user" x="20" y="212" width="80" height="60" rx="6" stroke-width="0.5"/><text class="th" x="60" y="260" text-anchor="middle" dominant-baseline="central">ユーザー</text></g>
+<g class="c-blue"><rect id="n-igw" x="177" y="212" width="56" height="60" rx="6" stroke-width="0.5"/><text class="th" x="205" y="260" text-anchor="middle" dominant-baseline="central">IGW</text></g>
+<g class="c-coral"><rect id="n-nfw" x="266" y="212" width="74" height="60" rx="6" stroke-width="0.5"/><text class="th" x="303" y="260" text-anchor="middle" dominant-baseline="central">NFW</text></g>
+<g class="c-amber"><rect id="n-waf" x="366" y="212" width="44" height="60" rx="6" stroke-width="0.5"/><text class="th" x="388" y="260" text-anchor="middle" dominant-baseline="central">WAF</text></g>
+<g class="c-teal"><rect id="n-alb" x="420" y="212" width="66" height="60" rx="6" stroke-width="0.5"/><text class="th" x="453" y="260" text-anchor="middle" dominant-baseline="central">ALB</text></g>
+<g class="c-pink"><rect id="n-ec2" x="530" y="212" width="90" height="60" rx="6" stroke-width="0.5"/><text class="th" x="575" y="260" text-anchor="middle" dominant-baseline="central">EC2</text></g>
+<g class="c-gray"><rect id="n-rt1" x="215" y="318" width="140" height="40" rx="6" stroke-width="0.5"/><text class="ts" x="285" y="331" text-anchor="middle" dominant-baseline="central">IGWエッジRT</text><text class="ts" x="285" y="347" text-anchor="middle" dominant-baseline="central">10.0.1.0/24 → NFW</text></g>
+<g class="c-gray"><rect id="n-rt2" x="365" y="318" width="135" height="40" rx="6" stroke-width="0.5"/><text class="ts" x="432" y="331" text-anchor="middle" dominant-baseline="central">FWサブネットRT</text><text class="ts" x="432" y="347" text-anchor="middle" dominant-baseline="central">0.0.0.0/0 → IGW</text></g>
+<g class="c-gray"><rect id="n-rt3" x="510" y="318" width="140" height="40" rx="6" stroke-width="0.5"/><text class="ts" x="580" y="331" text-anchor="middle" dominant-baseline="central">PublicサブネットRT</text><text class="ts" x="580" y="347" text-anchor="middle" dominant-baseline="central">0.0.0.0/0 → NFW</text></g>
+<g id="pk"></g>
+</svg>
+<div class="ctrl">
+<button id="pp" type="button">一時停止</button>
+<button id="rs" type="button">最初から</button>
+<label>速度<input type="range" id="spd" min="0.5" max="2" step="0.1" value="1" style="width:110px"><span id="spdv" style="min-width:32px">1.0倍</span></label>
+<label><input type="checkbox" id="tC">DNSキャッシュなし</label>
+<label><input type="checkbox" id="tA">攻撃リクエスト混入</label>
+<label><input type="checkbox" id="tB">拒否リストからのアクセス</label>
+</div>
+<div id="stat"></div>
+<div id="cards"></div>
+<div id="det">段階カードを押すと、その段階の点を強調して説明を表示します。</div>
+<a class="back" href="/diagrams/">図解一覧へ</a>
+</main>
+<script>
+(function(){
+var ST={
+dns:{n:'名前解決（キャッシュ参照）',c:'#7F77DD',g:'リクエスト（往路）',ip:'app.example.com → 198.51.100.20（キャッシュから）',h:['n-user','n-cache'],d:'すべてのリクエストは、まず端末やリゾルバーのキャッシュで app.example.com を引く。TTLが切れていなければその場で 198.51.100.20 が返り、Route 53には問い合わせない。図では5件に1件をキャッシュミスとして、Route 53まで問い合わせに行かせている。'},
+r53:{n:'Route 53へ問い合わせ',c:'#534AB7',g:'リクエスト（往路）',ip:'リゾルバー → Route 53：app.example.com A? → 198.51.100.20（エイリアス → ALB）',h:['n-cache','n-r53'],d:'キャッシュミスのときだけ、リゾルバーが権威DNSのRoute 53に問い合わせる。パブリックホストゾーン example.com に、app.example.com をALBへのエイリアスレコード（Aレコード）として登録している。ALBのIPは変わることがあるので、IPを直接書かずエイリアスで指すのが前提。エイリアスのTTLはターゲット側の値（ALBは60秒）が使われる。ACM証明書はDNS検証で発行し、ALBにアタッチする。'},
+net:{n:'インターネット → IGW',c:'#378ADD',g:'リクエスト（往路）',ip:'203.0.113.50 → 198.51.100.20:443（IGW通過後 203.0.113.50 → 10.0.1.25:443）',h:['n-user','n-igw','n-rt1'],d:'IGWでALBノードのパブリックIPがプライベートIPに変換される。ここで効いているのがIGWに関連付けたエッジルートテーブル（Ingress Routing）で、Publicサブネット宛ての通信をそのままALBへは渡さず、NFWのエンドポイントに向ける。'},
+nfw:{n:'NFWで検査',c:'#D85A30',g:'リクエスト（往路）',ip:'203.0.113.50 → 10.0.1.25:443（NFWはIPを書き換えない）',h:['n-nfw','n-rt1'],d:'NFWのファイアウォールエンドポイントは、専用のFWサブネットにAZごとに置く。ステートフルルールグループ（Suricata互換）で、IPやポート、プロトコルを検査する。この時点の通信はまだTLSで暗号化されているので、TLSインスペクションを設定しない限り、見えるのは5タプルとSNIまで。'},
+waf:{n:'WAFで評価',c:'#BA7517',g:'リクエスト（往路）',ip:'203.0.113.50 → 10.0.1.25:443（復号後のHTTPを評価）',h:['n-waf'],d:'AWS WAFのWeb ACLはALBに関連付ける。ALBがTLSを終端したあとに評価されるので、ヘッダーやパス、ボディといったL7の中身を見られる。マネージドルールグループやレートベースルールを組み合わせるのが基本。'},
+alb:{n:'ALBで転送',c:'#1D9E75',g:'リクエスト（往路）',ip:'10.0.1.25 → 10.0.11.10:80（X-Forwarded-For: 203.0.113.50）',h:['n-alb'],d:'ALBはクライアントとの接続を終端し、ターゲットのEC2へ新しい接続を張る。そのためEC2から見た送信元はALBのIPになり、本来のクライアントIPはX-Forwarded-Forヘッダーで受け取る。ALBは本来2つ以上のAZが必須だが、図ではAZ-aだけを表示している。'},
+ec2:{n:'EC2で処理',c:'#D4537E',g:'リクエスト（往路）',ip:'10.0.1.25 → 10.0.11.10:80',h:['n-ec2'],d:'EC2はパブリックIPを持たないPrivateサブネットに置く。SGのインバウンドはポート80を「ALBのSG」からだけ許可し、CIDRでは開けない。外向き通信（NAT Gateway）はこの図では省略している。'},
+res:{n:'レスポンス',c:'#888780',g:'レスポンス（復路）',ip:'10.0.11.10:80 → 10.0.1.25 ／ 10.0.1.25:443 → 203.0.113.50（IGW通過後 198.51.100.20:443 → 203.0.113.50）',h:['n-ec2','n-alb','n-nfw','n-igw','n-rt3','n-rt2'],d:'ALBからの応答は、PublicサブネットRTの 0.0.0.0/0 → NFW でNFWに戻り、FWサブネットRTの 0.0.0.0/0 → IGW で外に出る。PublicサブネットRTがIGWを直接指していると、行きと帰りで経路が非対称になり、ステートフルなNFWが戻りの通信を落とす。NFW構成で一番ハマりやすいのがここ。'},
+waf403:{n:'WAFブロック（403）',c:'#E24B4A',g:'遮断',ip:'203.0.113.66 → 10.0.1.25:443 → 403 Forbidden',h:['n-waf','n-alb'],d:'WAFのルールに一致したリクエストはEC2に届かず、ALBが403を返す。L7で判定した結果を、クライアントに明示的な応答として返すのが特徴。カスタムレスポンスで本文を差し替えることもできる。'},
+drop:{n:'NFWで破棄',c:'#A32D2D',g:'遮断',ip:'192.0.2.77 → 198.51.100.20:443 → 応答なし',h:['n-nfw'],d:'拒否リスト（192.0.2.0/24）からの通信を、NFWのステートフルルールがdropする。応答を返さないので、クライアントからはタイムアウトに見える。WAFの403との違いを見ると、L3/L4で黙って落とすNFWと、L7で明示的に断るWAFの役割分担がわかる。'}};
+var SPD=140,NS='http://www.w3.org/2000/svg',O=224,R=238,CY=143;
+var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var pk=[],run=!reduce,speed=1,acc=0.9,sel=null,seq=0,stats,last=null;
+var tA=document.getElementById('tA'),tB=document.getElementById('tB'),tC=document.getElementById('tC'),g=document.getElementById('pk'),pp=document.getElementById('pp');
+function resetStats(){stats={ok:0,waf:0,nfw:0,n:0,q:0};}
+resetStats();
+function route(){seq++;var P=[];
+function mv(s,p){P.push({k:'mv',s:s,p:p});}
+function hd(s,pt,t){P.push({k:'hd',s:s,pt:pt,t:t});}
+function spawn(f){P.push({k:'fn',f:f});}
+var miss=tC.checked||seq%5===1,atk=tA.checked&&seq%4===0,bad=tB.checked&&!atk&&seq%5===3;
+mv('dns',[[53,212],[53,CY]]);spawn(function(){stats.n++;});hd('dns',[53,CY],0.2);
+if(miss){spawn(function(){stats.q++;});mv('r53',[[53,CY],[53,44],[170,44]]);hd('r53',[170,44],0.25);mv('r53',[[170,58],[67,58],[67,CY]]);}
+else{mv('dns',[[53,CY],[67,CY]]);}
+mv('dns',[[67,CY],[67,O]]);
+mv('net',[[67,O],[205,O]]);hd('net',[205,O],0.2);
+if(bad){mv('net',[[205,O],[303,O]]);hd('drop',[303,O],0.7);spawn(function(){stats.nfw++;});return P;}
+mv('nfw',[[205,O],[303,O]]);hd('nfw',[303,O],0.3);mv('waf',[[303,O],[388,O]]);hd('waf',[388,O],0.3);
+if(atk){hd('waf403',[388,O],0.2);mv('waf403',[[388,O],[388,R],[303,R],[205,R],[100,R]]);spawn(function(){stats.waf++;});return P;}
+mv('alb',[[388,O],[453,O]]);hd('alb',[453,O],0.3);mv('ec2',[[453,O],[575,O]]);hd('ec2',[575,O],0.5);
+mv('res',[[575,O],[575,R],[453,R]]);hd('res',[453,R],0.15);mv('res',[[453,R],[303,R]]);hd('res',[303,R],0.2);mv('res',[[303,R],[205,R]]);hd('res',[205,R],0.15);mv('res',[[205,R],[100,R]]);spawn(function(){stats.ok++;});return P;}
+function add(){var st=route();var el=document.createElementNS(NS,'circle');el.setAttribute('r',5);g.appendChild(el);pk.push({st:st,i:0,j:null,t:0,x:53,y:212,s:'dns',el:el});}
+function step(p,dt){while(dt>0&&p.i<p.st.length){var s=p.st[p.i];
+if(s.k==='fn'){s.f();p.i++;continue;}
+if(s.k==='hd'){p.s=s.s;p.x=s.pt[0];p.y=s.pt[1];var n=s.t-p.t;if(dt<n){p.t+=dt;dt=0;}else{dt-=n;p.t=0;p.i++;}continue;}
+p.s=s.s;if(p.j===null){p.j=0;p.x=s.p[0][0];p.y=s.p[0][1];}
+var q=s.p[p.j+1];if(!q){p.j=null;p.i++;continue;}
+var dx=q[0]-p.x,dy=q[1]-p.y,d=Math.hypot(dx,dy),m=SPD*dt;
+if(m>=d){p.x=q[0];p.y=q[1];dt-=d/SPD;p.j++;}else{p.x+=dx/d*m;p.y+=dy/d*m;dt=0;}}
+while(p.i<p.st.length&&p.st[p.i].k==='fn'){p.st[p.i].f();p.i++;}
+if(p.i>=p.st.length)p.dead=true;}
+var cardsEl=document.getElementById('cards'),cnt={},NODES=['n-user','n-cache','n-r53','n-igw','n-nfw','n-waf','n-alb','n-ec2','n-rt1','n-rt2','n-rt3'];
+var lastG='';Object.keys(ST).forEach(function(k){var s=ST[k];if(s.g!==lastG){var h=document.createElement('div');h.className='grp';h.textContent=s.g;cardsEl.appendChild(h);var w=document.createElement('div');w.className='cards';cardsEl.appendChild(w);lastG=s.g;}
+var c=document.createElement('div');c.className='card';c.id='c-'+k;c.setAttribute('role','button');c.tabIndex=0;
+c.innerHTML='<span class="mk" style="background:'+s.c+'"></span><span>'+s.n+'</span><span class="cnt" id="k-'+k+'">0</span>';
+c.onclick=function(){pick(k);};c.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(k);}};cardsEl.lastChild.appendChild(c);});
+function pick(k){sel=sel===k?null:k;document.querySelectorAll('.card').forEach(function(c){c.classList.toggle('on',c.id==='c-'+sel);});
+NODES.forEach(function(id){document.getElementById(id).setAttribute('stroke-width','0.5');});
+var det=document.getElementById('det');
+if(!sel){det.textContent='段階カードを押すと、その段階の点を強調して説明を表示します。';return;}
+var s=ST[sel];s.h.forEach(function(id){document.getElementById(id).setAttribute('stroke-width','2.5');});
+det.innerHTML='<div style="font-weight:500;margin-bottom:4px">'+s.n+'</div><div>'+s.d+'</div>'+(s.ip?'<div class="ip">'+s.ip+'</div>':'');}
+function draw(){Object.keys(ST).forEach(function(k){cnt[k]=0;});
+pk.forEach(function(p){cnt[p.s]++;var on=!sel||p.s===sel;p.el.setAttribute('cx',p.x);p.el.setAttribute('cy',p.y);p.el.setAttribute('fill',ST[p.s].c);
+p.el.setAttribute('r',sel&&on?7:5);p.el.setAttribute('opacity',on?1:0.1);p.el.style.stroke=sel&&on?'var(--text)':'none';p.el.style.strokeWidth=sel&&on?'1.5':'0';});
+Object.keys(ST).forEach(function(k){document.getElementById('k-'+k).textContent=cnt[k];});
+document.getElementById('stat').textContent='処理中 '+pk.length+' / 名前解決 '+stats.n+'（うちRoute 53 '+stats.q+'） / 応答 '+stats.ok+' / WAFで403 '+stats.waf+' / NFWで破棄 '+stats.nfw;}
+function tick(ts){if(last===null)last=ts;var dt=Math.min((ts-last)/1000,0.1);last=ts;
+if(run){dt*=speed;acc+=dt;while(acc>=1){acc-=1;add();}pk.forEach(function(p){step(p,dt);});pk=pk.filter(function(p){if(p.dead){p.el.remove();return false;}return true;});}
+draw();requestAnimationFrame(tick);}
+function setRun(v){run=v;pp.textContent=run?'一時停止':'再生';}
+setRun(run);
+pp.onclick=function(){setRun(!run);};
+document.getElementById('rs').onclick=function(){pk.forEach(function(p){p.el.remove();});pk=[];seq=0;acc=0.9;resetStats();setRun(true);};
+document.getElementById('spd').oninput=function(e){speed=+e.target.value;document.getElementById('spdv').textContent=speed.toFixed(1)+'倍';};
+requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
