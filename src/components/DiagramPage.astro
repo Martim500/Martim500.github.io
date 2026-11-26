@@ -1,0 +1,25 @@
+---
+import Base from '../layouts/Base.astro';
+import DiagramPlayer from './DiagramPlayer.astro';
+import { ui, path, type Lang } from '../data/site';
+import type { Diagram } from '../data/diagrams';
+
+interface Props {
+  lang: Lang;
+  diagram: Diagram;
+}
+const { lang, diagram } = Astro.props;
+const t = ui[lang];
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const other: Lang = lang === 'ja' ? 'en' : 'ja';
+const prefixOf = (l: Lang) => (l === 'ja' ? '' : '/en');
+---
+
+<Base lang={lang} title={diagram.title[lang]} altPath={`${prefixOf(other)}/diagrams/${diagram.slug}/`}>
+  <section>
+    <p><a href={`${base}${path(lang, 'diagrams')}`}>← {t.allDiagrams}</a></p>
+    <h1 style="font-size: clamp(1.75rem, 5vw, 2.5rem)">{diagram.title[lang]}</h1>
+    <p class="muted">{diagram.summary[lang]}</p>
+    <DiagramPlayer diagram={diagram} lang={lang} />
+  </section>
+</Base>

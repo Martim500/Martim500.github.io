@@ -6,8 +6,10 @@ interface Props {
   lang?: Lang;
   // 切り替え先(もう一方の言語)のページ種別。省略時は切り替えリンクを出さない
   page?: Page;
+  // 詳細ページなど、切り替え先を個別に指定する場合のパス(例: /en/diagrams/foo/)
+  altPath?: string;
 }
-const { title, lang = 'ja', page } = Astro.props;
+const { title, lang = 'ja', page, altPath } = Astro.props;
 const t = ui[lang];
 const other: Lang = lang === 'ja' ? 'en' : 'ja';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -35,10 +37,11 @@ const pageTitle = title ? `${title} | ${site.title}` : site.title;
         <a href={`${base}${path(lang, 'works')}`}>{t.works}</a>
         <a href={`${base}${path(lang, 'talks')}`}>{t.talks}</a>
         <a href={`${base}${path(lang, 'tools')}`}>{t.tools}</a>
+        <a href={`${base}${path(lang, 'diagrams')}`}>{t.diagrams}</a>
         <a href={`${base}${path(lang, 'services')}`}>{t.services}</a>
         {
-          page !== undefined && (
-            <a class="lang" href={`${base}${path(other, page)}`} lang={other}>
+          (page !== undefined || altPath) && (
+            <a class="lang" href={altPath ? `${base}${altPath}` : `${base}${path(other, page as Page)}`} lang={other}>
               {t.switchLabel}
             </a>
           )

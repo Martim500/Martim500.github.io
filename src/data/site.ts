@@ -127,13 +127,23 @@ export const ui = {
     slidesNote: '資料はすべて日本語です。',
     links: '関連URL',
     services: 'お仕事',
+    diagrams: '図解',
+    diagramsLead: '動きで見返せる図解集です。再生・一時停止・コマ送りができます。',
+    play: '再生',
+    pause: '一時停止',
+    prev: '戻る',
+    next: '次へ',
+    reset: '最初から',
+    stepsHeading: '流れ',
+    openDiagram: '見る',
+    allDiagrams: '図解一覧',
     career: 'AWS経歴',
     activity: '発信活動',
     talkCount: '登壇',
     timesSuffix: '回',
     preparing: '準備中',
     sideWork: 'ご依頼(副業)',
-    mainWork: 'ご相談(本業)',
+    consultWork: 'ご相談・ご連絡',
     todoWorks: 'TODO: 作成サイト(未定)',
     openTool: '開く',
     switchLabel: 'English',
@@ -148,13 +158,23 @@ export const ui = {
     slidesNote: 'All slides are in Japanese.',
     links: 'Links',
     services: 'Services',
+    diagrams: 'Diagrams',
+    diagramsLead: 'Animated diagrams you can revisit. Play, pause and step through them.',
+    play: 'Play',
+    pause: 'Pause',
+    prev: 'Back',
+    next: 'Next',
+    reset: 'Restart',
+    stepsHeading: 'Flow',
+    openDiagram: 'Open',
+    allDiagrams: 'All diagrams',
     career: 'AWS Career',
     activity: 'Activities',
     talkCount: 'Talks',
     timesSuffix: '',
     preparing: 'Coming soon',
     sideWork: 'Freelance requests',
-    mainWork: 'Business inquiries (main job)',
+    consultWork: 'Contact',
     todoWorks: 'TODO: Works (to be decided)',
     openTool: 'Open',
     switchLabel: '日本語',
@@ -163,7 +183,7 @@ export const ui = {
 } satisfies Record<Lang, Record<string, string>>;
 
 // 言語ごとのパス。ja はルート直下、en は /en/ 配下。
-export type Page = '' | 'about' | 'works' | 'tools' | 'talks' | 'services';
+export type Page = '' | 'about' | 'works' | 'tools' | 'talks' | 'services' | 'diagrams';
 
 export function path(lang: Lang, page: Page): string {
   const prefix = lang === 'ja' ? '' : 'en/';

@@ -5,8 +5,8 @@ import type { Lang } from './site';
 
 export interface ServiceProfile {
   name: string;
-  // 'side' 副業のご依頼 / 'main' 本業のご相談
-  group: 'side' | 'main';
+  // 'side' 副業のご依頼 / 'consult' ご相談・ご連絡
+  group: 'side' | 'consult';
   url?: string;
   summary?: Record<Lang, string>;
 }
@@ -18,4 +18,13 @@ export const serviceProfiles: ServiceProfile[] = [
     url: 'https://crowdworks.jp/public/employees/6605678',
   },
   { name: 'ココナラ', group: 'side' },
+  {
+    name: 'X (DM)',
+    group: 'consult',
+    url: 'https://x.com/martim5004951',
+    summary: {
+      ja: 'ご相談・ご連絡はXのDMからお願いします。',
+      en: 'Please send inquiries as a DM on X.',
+    },
+  },
 ];

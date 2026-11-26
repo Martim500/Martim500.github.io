@@ -6,16 +6,20 @@ type L = Record<Lang, string>;
 
 export const intro: L[] = [
   {
-    ja: 'Martim(マーティン)です。',
-    en: 'I am Martim (pronounced "Martin").',
+    ja: 'こんにちは！Martim(マーティン)です。AWSのクラウドエンジニアをしています。',
+    en: 'Hi, I am Martim (pronounced "Martin"). I am an AWS cloud engineer.',
   },
   {
-    ja: 'AWSクラウドエンジニアです。AWSの実務経験は3年(2026年時点)。Amazon Bedrock、AWS Lambda、AWS IoT、コスト最適化などを扱っています。',
-    en: 'I am an AWS cloud engineer with 3 years of hands-on AWS experience (as of 2026). I work with Amazon Bedrock, AWS Lambda, AWS IoT and cost optimization.',
+    ja: 'AWSを触り始めて3年(2026年時点)。Amazon Bedrock、AWS Lambda、AWS IoT、コスト最適化を中心に、手を動かしながら学んでいます。AWS認定資格は全12資格を取得し、Japan AWS Jr. Champions としても活動しています。',
+    en: 'I have worked with AWS for 3 years (as of 2026), mainly on Amazon Bedrock, AWS Lambda, AWS IoT and cost optimization, learning by building. I hold all 12 AWS Certifications and am active as a Japan AWS Jr. Champion.',
   },
   {
-    ja: '登壇、社内外の勉強会、Qiitaでの記事執筆を通じて、AWSの知見を発信しています。',
-    en: 'I share what I learn about AWS through talks, internal and external study sessions, and articles on Qiita.',
+    ja: '学んだことは、登壇、社内外の勉強会、Qiitaの記事で発信しています。会社をまたいだコミュニティづくりにも取り組んでいます。',
+    en: 'I share what I learn through talks, internal and external study sessions, and Qiita articles, and I also work on building community across companies.',
+  },
+  {
+    ja: 'ご相談やご連絡は、XのDMからどうぞ。',
+    en: 'For inquiries, please send me a DM on X.',
   },
 ];
 

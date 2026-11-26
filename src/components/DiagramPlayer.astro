@@ -1,0 +1,343 @@
+---
+import { ui, type Lang } from '../data/site';
+import type { Diagram } from '../data/diagrams';
+
+interface Props {
+  diagram: Diagram;
+  lang: Lang;
+}
+const { diagram, lang } = Astro.props;
+const t = ui[lang];
+
+const NODE_W = 150;
+const NODE_H = 64;
+const OFFSET = 9;
+
+const nodes = diagram.nodes.map((n) => {
+  const w = n.w ?? NODE_W;
+  const h = n.h ?? NODE_H;
+  return { ...n, w, h, cx: n.x + w / 2, cy: n.y + h / 2, lines: n.label[lang].split('\n') };
+});
+const byId = new Map(nodes.map((n) => [n.id, n]));
+
+// 矩形の縁と、中心から方向 (dx,dy) に伸ばした線の交点
+function edgePoint(n: (typeof nodes)[number], dx: number, dy: number) {
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const tx = ux === 0 ? Infinity : n.w / 2 / Math.abs(ux);
+  const ty = uy === 0 ? Infinity : n.h / 2 / Math.abs(uy);
+  const k = Math.min(tx, ty);
+  return { x: n.cx + ux * k, y: n.cy + uy * k };
+}
+
+const pairKey = (a: string, b: string) => `${a}>${b}`;
+const directions = new Set(diagram.steps.map((s) => pairKey(s.from, s.to)));
+
+const geo = diagram.steps.map((s) => {
+  const a = byId.get(s.from)!;
+  const b = byId.get(s.to)!;
+  const dx = b.cx - a.cx;
+  const dy = b.cy - a.cy;
+  const len = Math.hypot(dx, dy) || 1;
+  // 往復する2ノード間は、進行方向の左右に少しずらして重ならないようにする
+  const reversed = directions.has(pairKey(s.to, s.from));
+  const off = reversed ? OFFSET : 0;
+  const ox = (-dy / len) * off;
+  const oy = (dx / len) * off;
+  const p1 = edgePoint(a, dx, dy);
+  const p2 = edgePoint(b, -dx, -dy);
+  // 矢印の先が箱に隠れないよう、わずかに手前で止める
+  const ux = dx / len;
+  const uy = dy / len;
+  return {
+    x1: p1.x + ox,
+    y1: p1.y + oy,
+    x2: p2.x + ox - ux * 3,
+    y2: p2.y + oy - uy * 3,
+    from: s.from,
+    to: s.to,
+  };
+});
+const uid = `d-${diagram.slug}`;
+const stepsData = JSON.stringify(geo);
+---
+
+<div class="diagram" data-steps={stepsData} data-lang={lang}>
+  <div class="stage">
+  <svg
+    viewBox={`0 0 ${diagram.width} ${diagram.height}`}
+    role="img"
+    aria-label={diagram.title[lang]}
+  >
+    <defs>
+      <marker id={`${uid}-arrow`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" class="arrow" />
+      </marker>
+    </defs>
+    {
+      geo.map((g, i) => (
+        <line
+          class="edge"
+          data-edge={i}
+          x1={g.x1}
+          y1={g.y1}
+          x2={g.x2}
+          y2={g.y2}
+          marker-end={`url(#${uid}-arrow)`}
+        />
+      ))
+    }
+    {
+      nodes.map((n) => (
+        <g class="node" data-node={n.id}>
+          <rect x={n.x} y={n.y} width={n.w} height={n.h} rx="10" />
+          <text x={n.cx} y={n.cy} text-anchor="middle">
+            {n.lines.map((line, i) => (
+              <tspan x={n.cx} dy={i === 0 ? `${-(n.lines.length - 1) * 0.6 + 0.35}em` : '1.2em'}>{line}</tspan>
+            ))}
+          </text>
+        </g>
+      ))
+    }
+    <circle class="dot" r="7" cx="-20" cy="-20"></circle>
+  </svg>
+  </div>
+
+  <p class="caption" aria-live="polite"></p>
+
+  <div class="controls">
+    <button type="button" data-act="toggle" data-play={t.play} data-pause={t.pause}>{t.pause}</button>
+    <button type="button" data-act="prev">{t.prev}</button>
+    <button type="button" data-act="next">{t.next}</button>
+    <button type="button" data-act="reset">{t.reset}</button>
+  </div>
+
+  <h3>{t.stepsHeading}</h3>
+  <ol class="steps">
+    {diagram.steps.map((s, i) => <li data-step={i}>{s.caption[lang]}</li>)}
+  </ol>
+</div>
+
+<style>
+  .stage {
+    overflow-x: auto;
+  }
+  .diagram svg {
+    width: 100%;
+    min-width: 640px;
+    height: auto;
+    display: block;
+  }
+  .edge {
+    stroke: var(--line);
+    stroke-width: 2.5;
+    transition: stroke 0.3s;
+  }
+  .edge.active {
+    stroke: var(--accent);
+  }
+  .arrow {
+    fill: var(--muted);
+  }
+  .node rect {
+    fill: var(--bg);
+    stroke: var(--line);
+    stroke-width: 2;
+    transition: stroke 0.3s, fill 0.3s;
+  }
+  .node text {
+    fill: var(--fg);
+    font-size: 18px;
+    font-family: inherit;
+  }
+  .node.active rect {
+    stroke: var(--accent);
+    stroke-width: 3;
+  }
+  .dot {
+    fill: var(--accent);
+  }
+  .caption {
+    min-height: 3.2em;
+    margin: 1rem 0;
+    font-weight: 600;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .controls button {
+    font: inherit;
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+  }
+  .controls button:hover,
+  .controls button:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .steps {
+    padding-left: 1.5rem;
+  }
+  .steps li {
+    color: var(--muted);
+    transition: color 0.3s;
+  }
+  .steps li.active {
+    color: var(--fg);
+    font-weight: 600;
+  }
+</style>
+
+<script>
+  // 図解プレイヤー。各ステップで、点が from から to へ矢印に沿って動く。
+  interface Geo {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    from: string;
+    to: string;
+  }
+
+  const MOVE_MS = 1200;
+  const HOLD_MS = 900;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document.querySelectorAll<HTMLElement>('.diagram').forEach((root) => {
+    const geo: Geo[] = JSON.parse(root.dataset.steps ?? '[]');
+    const dot = root.querySelector<SVGCircleElement>('.dot')!;
+    const caption = root.querySelector<HTMLElement>('.caption')!;
+    const toggle = root.querySelector<HTMLButtonElement>('[data-act="toggle"]')!;
+    const items = Array.from(root.querySelectorAll<HTMLElement>('.steps li'));
+    const edges = Array.from(root.querySelectorAll<SVGElement>('.edge'));
+    const nodeEls = new Map(
+      Array.from(root.querySelectorAll<SVGElement>('.node')).map((n) => [n.dataset.node!, n]),
+    );
+
+    let index = -1; // 表示中のステップ
+    let playing = !reduce;
+    let raf = 0;
+    let timer = 0;
+
+    const clearTimers = () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+    };
+
+    function setDot(x: number, y: number) {
+      dot.setAttribute('cx', String(x));
+      dot.setAttribute('cy', String(y));
+    }
+
+    function highlight(i: number) {
+      edges.forEach((e, k) => e.classList.toggle('active', k === i));
+      items.forEach((li, k) => li.classList.toggle('active', k === i));
+      nodeEls.forEach((n) => n.classList.remove('active'));
+      if (i >= 0) {
+        nodeEls.get(geo[i].from)?.classList.add('active');
+        nodeEls.get(geo[i].to)?.classList.add('active');
+        caption.textContent = items[i].textContent;
+      } else {
+        caption.textContent = '';
+        setDot(-20, -20);
+      }
+    }
+
+    function updateToggle() {
+      toggle.textContent = playing ? toggle.dataset.pause! : toggle.dataset.play!;
+    }
+
+    // ステップ i を表示。animate が true なら点を動かし、終わったら onDone を呼ぶ
+    function show(i: number, animate: boolean, onDone?: () => void) {
+      clearTimers();
+      index = i;
+      highlight(i);
+      if (i < 0) return;
+      const g = geo[i];
+      if (!animate || reduce) {
+        setDot(g.x2, g.y2);
+        onDone?.();
+        return;
+      }
+      const start = performance.now();
+      const frame = (now: number) => {
+        const k = Math.min(1, (now - start) / MOVE_MS);
+        const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; // ease in-out
+        setDot(g.x1 + (g.x2 - g.x1) * e, g.y1 + (g.y2 - g.y1) * e);
+        if (k < 1) raf = requestAnimationFrame(frame);
+        else onDone?.();
+      };
+      setDot(g.x1, g.y1);
+      raf = requestAnimationFrame(frame);
+    }
+
+    function autoNext() {
+      if (!playing) return;
+      const last = index >= geo.length - 1;
+      timer = window.setTimeout(() => {
+        if (!playing) return;
+        const nextIndex = last ? 0 : index + 1;
+        show(nextIndex, true, autoNext);
+      }, last ? HOLD_MS * 2 : HOLD_MS);
+    }
+
+    function play() {
+      playing = true;
+      updateToggle();
+      show(Math.max(index, 0), true, autoNext);
+    }
+
+    function pause() {
+      playing = false;
+      updateToggle();
+      clearTimers();
+      // 動きの途中で止まった場合も、点は矢印の終点に置く
+      if (index >= 0) setDot(geo[index].x2, geo[index].y2);
+    }
+
+    // 画面に入ったら再生開始(動きを減らす設定では自動再生しない)
+    function start() {
+      if (playing) play();
+      else {
+        updateToggle();
+        show(0, false);
+      }
+    }
+
+    root.querySelector('[data-act="toggle"]')!.addEventListener('click', () => (playing ? pause() : play()));
+    root.querySelector('[data-act="next"]')!.addEventListener('click', () => {
+      pause();
+      show(index >= geo.length - 1 ? 0 : index + 1, true);
+    });
+    root.querySelector('[data-act="prev"]')!.addEventListener('click', () => {
+      pause();
+      show(index <= 0 ? geo.length - 1 : index - 1, true);
+    });
+    root.querySelector('[data-act="reset"]')!.addEventListener('click', () => {
+      clearTimers();
+      index = -1;
+      highlight(-1);
+      if (playing) play();
+    });
+    items.forEach((li, i) => li.addEventListener('click', () => { pause(); show(i, true); }));
+
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          start();
+        }
+      });
+      io.observe(root);
+    } else {
+      start();
+    }
+  });
+</script>

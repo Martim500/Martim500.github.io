@@ -1,0 +1,11 @@
+---
+import DiagramPage from '../../components/DiagramPage.astro';
+import { diagrams } from '../../data/diagrams';
+
+export function getStaticPaths() {
+  return diagrams.map((diagram) => ({ params: { slug: diagram.slug }, props: { diagram } }));
+}
+const { diagram } = Astro.props;
+---
+
+<DiagramPage lang="ja" diagram={diagram} />

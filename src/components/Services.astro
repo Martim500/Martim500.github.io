@@ -11,7 +11,7 @@ const t = ui[lang];
 const published = serviceProfiles.filter((s) => s.url);
 const groups = [
   { key: 'side' as const, label: t.sideWork },
-  { key: 'main' as const, label: t.mainWork },
+  { key: 'consult' as const, label: t.consultWork },
 ]
   .map((g) => ({ ...g, items: published.filter((s) => s.group === g.key) }))
   .filter((g) => g.items.length > 0);
