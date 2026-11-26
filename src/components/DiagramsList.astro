@@ -15,16 +15,19 @@ const prefix = lang === 'ja' ? '' : '/en';
 <Base lang={lang} page="diagrams" title={t.diagrams}>
   <section class="reveal">
     <h1>{t.diagrams}</h1>
-    <p class="muted">{t.diagramsLead}</p>
-    <ul class="entries">
-      {
-        diagrams.map((d) => (
-          <li>
-            <a href={`${base}${prefix}/diagrams/${d.slug}/`}><strong>{d.title[lang]}</strong></a>
-            <div class="meta">{d.summary[lang]}</div>
-          </li>
-        ))
-      }
-    </ul>
+    {
+      diagrams.length === 0 ? (
+        <p class="muted">{t.preparing}</p>
+      ) : (
+        <ul class="entries">
+          {diagrams.map((d) => (
+            <li>
+              <a href={`${base}${prefix}/diagrams/${d.slug}/`}><strong>{d.title[lang]}</strong></a>
+              <div class="meta">{d.summary[lang]}</div>
+            </li>
+          ))}
+        </ul>
+      )
+    }
   </section>
 </Base>
