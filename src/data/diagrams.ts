@@ -1,37 +1,23 @@
-// 動く図解。1本1オブジェクト。追加するときは配列に足すだけで一覧と詳細ページが増える。
+// 動く図解の一覧。図解本体は単体のHTMLで、public/diagrams/<slug>/index.html に置く。
+// 公開URLは /diagrams/<slug>/ 。ここに1件足すと、一覧ページ(/diagrams/)に出る。
 //
-// nodes: 箱。x,y は左上、w,h は大きさ(viewBox 内の座標)。label の改行は \n。
-// steps: 順番に再生される動き。from -> to の矢印に沿って点が動き、caption が表示される。
-//        同じ2ノード間で往復する場合は線が自動で少しずらされる。
-// 機密(会社の内部構成、顧客名、アカウントID)は書かない。
+// 追加例:
+//   {
+//     slug: 's3-lambda-event',
+//     title: { ja: '日本語タイトル', en: 'English title' },
+//     summary: { ja: '1文の説明', en: 'One-sentence description' },
+//     date: '2026-11',
+//   },
+//
+// 機密(会社の内部構成のうち未公開のもの、顧客名、アカウントID)は書かない。
 
 import type { Lang } from './site';
 
-type L = Record<Lang, string>;
-
-export interface DiagramNode {
-  id: string;
-  x: number;
-  y: number;
-  w?: number;
-  h?: number;
-  label: L;
-}
-
-export interface DiagramStep {
-  from: string;
-  to: string;
-  caption: L;
-}
-
 export interface Diagram {
   slug: string;
-  title: L;
-  summary: L;
-  width: number;
-  height: number;
-  nodes: DiagramNode[];
-  steps: DiagramStep[];
+  title: Record<Lang, string>;
+  summary: Record<Lang, string>;
+  date: string; // YYYY-MM
 }
 
 export const diagrams: Diagram[] = [];

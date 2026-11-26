@@ -1,6 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import { ui, path, type Lang } from '../data/site';
+import { ui, type Lang } from '../data/site';
 import { diagrams } from '../data/diagrams';
 
 interface Props {
@@ -9,20 +9,21 @@ interface Props {
 const { lang } = Astro.props;
 const t = ui[lang];
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const prefix = lang === 'ja' ? '' : '/en';
+const sorted = [...diagrams].sort((a, b) => b.date.localeCompare(a.date));
 ---
 
 <Base lang={lang} page="diagrams" title={t.diagrams}>
   <section class="reveal">
     <h1>{t.diagrams}</h1>
     {
-      diagrams.length === 0 ? (
+      sorted.length === 0 ? (
         <p class="muted">{t.preparing}</p>
       ) : (
         <ul class="entries">
-          {diagrams.map((d) => (
+          {sorted.map((d) => (
             <li>
-              <a href={`${base}${prefix}/diagrams/${d.slug}/`}><strong>{d.title[lang]}</strong></a>
+              <span class="date">{d.date.replace('-', '.')}</span>
+              <a href={`${base}/diagrams/${d.slug}/`}><strong>{d.title[lang]}</strong></a>
               <div class="meta">{d.summary[lang]}</div>
             </li>
           ))}
