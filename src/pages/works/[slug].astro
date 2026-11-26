@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import { ui } from '../../data/site';
 
 export async function getStaticPaths() {
   const works = await getCollection('works', ({ data }) => !data.draft);
@@ -12,7 +13,14 @@ const { Content } = await render(work);
 const { title, summary, stack, links, period } = work.data;
 ---
 
-<Base title={title}>
+<Base
+  title={title}
+  crumbs={[
+    { label: ui.ja.home, href: '/' },
+    { label: ui.ja.works, href: '/works/' },
+    { label: title },
+  ]}
+>
   <h1>{title}</h1>
   <p class="muted">{summary}</p>
   {period && <p class="muted">{period}</p>}

@@ -8,11 +8,17 @@ interface Props {
   page?: Page;
   // 詳細ページなど、切り替え先を個別に指定する場合のパス(例: /en/diagrams/foo/)
   altPath?: string;
+  // パンくず。省略時は page から自動で作る(ホームでは出さない)。最後の要素が現在のページ
+  crumbs?: { label: string; href?: string }[];
 }
-const { title, lang = 'ja', page, altPath } = Astro.props;
+const { title, lang = 'ja', page, altPath, crumbs: crumbsProp } = Astro.props;
 const t = ui[lang];
 const other: Lang = lang === 'ja' ? 'en' : 'ja';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const homeHref = `${base}${path(lang, '')}`;
+const crumbs =
+  crumbsProp ??
+  (page ? [{ label: t.home, href: homeHref }, { label: t[page as Exclude<Page, ''>] }] : []);
 const pageTitle = title ? `${title} | ${site.title}` : site.title;
 ---
 
@@ -32,7 +38,16 @@ const pageTitle = title ? `${title} | ${site.title}` : site.title;
   <body>
     <header>
       <a class="brand" href={`${base}${path(lang, '')}`}>{site.title}</a>
-      <nav>
+      <button
+        type="button"
+        class="menu-btn"
+        aria-label={t.menu}
+        aria-expanded="false"
+        aria-controls="site-menu"
+      >
+        <span class="bars" aria-hidden="true"></span>
+      </button>
+      <nav id="site-menu" aria-label={t.menu}>
         <a href={`${base}${path(lang, 'about')}`}>{t.about}</a>
         <a href={`${base}${path(lang, 'works')}`}>{t.works}</a>
         <a href={`${base}${path(lang, 'talks')}`}>{t.talks}</a>
@@ -48,12 +63,54 @@ const pageTitle = title ? `${title} | ${site.title}` : site.title;
         }
       </nav>
     </header>
+    {
+      crumbs.length > 0 && (
+        <nav class="crumbs" aria-label="breadcrumb">
+          <ol>
+            {crumbs.map((c, i) => (
+              <li>
+                {c.href && i < crumbs.length - 1 ? (
+                  <a href={c.href}>{c.label}</a>
+                ) : (
+                  <span aria-current="page">{c.label}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )
+    }
     <main>
       <slot />
     </main>
     <footer>
       <small>&copy; {new Date().getFullYear()} {site.name}</small>
     </footer>
+    <script is:inline>
+      // ハンバーガーメニュー。JSが無い環境ではメニューを常に表示する
+      (function () {
+        var btn = document.querySelector('.menu-btn');
+        var menu = document.getElementById('site-menu');
+        if (!btn || !menu) return;
+        function set(open) {
+          menu.classList.toggle('open', open);
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          set(!menu.classList.contains('open'));
+        });
+        document.addEventListener('click', function (e) {
+          if (!menu.contains(e.target)) set(false);
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') { set(false); btn.focus(); }
+        });
+        menu.addEventListener('click', function (e) {
+          if (e.target.closest('a')) set(false);
+        });
+      })();
+    </script>
     <script is:inline>
       // スクロールに応じてコンテンツを順に表示する。動きを減らす設定の人には適用しない。
       (function () {
@@ -104,20 +161,124 @@ const pageTitle = title ? `${title} | ${site.title}` : site.title;
     line-height: 1.8;
   }
   header {
+    position: relative;
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     padding: 1.5rem 0 1rem;
     border-bottom: 1px solid var(--line);
   }
-  header {
-    flex-wrap: wrap;
-    gap: 0.5rem 1.25rem;
-  }
+  /* JSが無い環境ではメニューを横並びで常に表示する */
   header nav {
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem 1.25rem;
+  }
+  .menu-btn {
+    display: none;
+  }
+  .js .menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-right: -0.6rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
+    border-radius: 8px;
+  }
+  .menu-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .menu-btn .bars,
+  .menu-btn .bars::before,
+  .menu-btn .bars::after {
+    display: block;
+    width: 1.375rem;
+    height: 2px;
+    background: currentColor;
+    border-radius: 2px;
+    transition: transform 0.25s, opacity 0.25s;
+  }
+  .menu-btn .bars {
+    position: relative;
+  }
+  .menu-btn .bars::before,
+  .menu-btn .bars::after {
+    content: '';
+    position: absolute;
+    left: 0;
+  }
+  .menu-btn .bars::before {
+    top: -7px;
+  }
+  .menu-btn .bars::after {
+    top: 7px;
+  }
+  .menu-btn[aria-expanded='true'] .bars {
+    background: transparent;
+  }
+  .menu-btn[aria-expanded='true'] .bars::before {
+    transform: translateY(7px) rotate(45deg);
+  }
+  .menu-btn[aria-expanded='true'] .bars::after {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+  .js header nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 10;
+    min-width: 12rem;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 0;
+    padding: 0.5rem 0;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  }
+  .js header nav.open {
+    display: flex;
+  }
+  .js header nav a {
+    padding: 0.6rem 1.25rem;
+    text-decoration: none;
+  }
+  .js header nav a:hover,
+  .js header nav a:focus-visible {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  .crumbs {
+    padding: 0.75rem 0 0;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+  .crumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .crumbs li + li::before {
+    content: '/';
+    margin-right: 0.5rem;
+    color: var(--line);
+  }
+  .crumbs a {
+    color: var(--muted);
+  }
+  .crumbs [aria-current='page'] {
+    color: var(--fg);
   }
   .entries {
     list-style: none;

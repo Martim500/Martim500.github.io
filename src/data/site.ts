@@ -119,6 +119,8 @@ export const talks: {
 
 export const ui = {
   ja: {
+    home: 'ホーム',
+    menu: 'メニュー',
     about: '自己紹介',
     works: '作成サイト',
     tools: 'ツール',
@@ -150,6 +152,8 @@ export const ui = {
     footer: '',
   },
   en: {
+    home: 'Home',
+    menu: 'Menu',
     about: 'About',
     works: 'Works',
     tools: 'Tools',

@@ -15,7 +15,15 @@ const other: Lang = lang === 'ja' ? 'en' : 'ja';
 const prefixOf = (l: Lang) => (l === 'ja' ? '' : '/en');
 ---
 
-<Base lang={lang} title={diagram.title[lang]} altPath={`${prefixOf(other)}/diagrams/${diagram.slug}/`}>
+<Base
+  lang={lang}
+  title={diagram.title[lang]}
+  crumbs={[
+    { label: t.home, href: `${base}${path(lang, '')}` },
+    { label: t.diagrams, href: `${base}${path(lang, 'diagrams')}` },
+    { label: diagram.title[lang] },
+  ]}
+  altPath={`${prefixOf(other)}/diagrams/${diagram.slug}/`}>
   <section>
     <p><a href={`${base}${path(lang, 'diagrams')}`}>← {t.allDiagrams}</a></p>
     <h1 style="font-size: clamp(1.75rem, 5vw, 2.5rem)">{diagram.title[lang]}</h1>
